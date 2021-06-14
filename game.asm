@@ -76,6 +76,10 @@ printMenu:
     mov     ecx, batu
     mov     edx, lenBatu
     call    printMsg
+
+    mov     ecx, exitMsg
+    mov     edx, lenExitMsg
+    call    printMsg
     
     call    newLine
 
