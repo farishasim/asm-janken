@@ -23,6 +23,18 @@ section .data
 
     newline     db 0xa
 
+    invalidMsg  db '!!! INVALID !!!', 0xa
+    lenInvalid  equ $ - invalidMsg
+
+    winMsg      db '$$$$$$$$$$$$$$', 0xa, '$  YOU  WIN  $', 0xa, '$$$$$$$$$$$$$$', 0xa
+    lenWin      equ $ - winMsg
+
+    drawMsg     db '##############', 0xa, '#  YOU DRAW  #', 0xa, '##############', 0xa
+    lenDraw     equ $ - drawMsg
+
+    loseMsg     db '%%%%%%%%%%%%%%', 0xa, '%  YOU LOSE  %', 0xa, '%%%%%%%%%%%%%%', 0xa
+    lenLose     equ $ - loseMsg
+
 section .bss
     p_choice    resb 1  ; player choice
     c_choice    resb 1  ; computer choice
@@ -34,12 +46,24 @@ section .text
     global _start
 
 _start:
+    mov     [p_count], 0
+    mov     [c_count], 0
+
+    mov     ecx, winMsg
+    mov     edx, lenWin
+    call    printMsg
+
+lmain:
     call    printMenu
 
     mov     ecx, p_choice
     mov     edx, 1
     call    printMsg
     call    newLine
+
+    mov     ecx, [p_choice]
+    cmp     ecx, '9'
+    jne     lmain
 
 exit:
     mov     eax, SYS_EXIT
@@ -91,4 +115,62 @@ printMenu:
     mov     edx, 1
     call    readInput
 
+    mov     ecx, newline
+    call    readInput
+
+    ret
+
+; void cmpChoice()
+cmpChoice:
+    cmp     eax, '1'
+    je      kertasChoice
+    cmp     eax, '2'
+    je      guntingChoice
+    cmp     eax, '3'
+    je      batuChoice
+
+    mov     ecx, invalidMsg
+    mov     edx, lenInvalid
+    jmp     returnChoice
+
+kertasChoice:
+    cmp     ebx, '2'
+    je      lose
+    cmp     ebx, '3'
+    je      win
+    jmp     draw    
+
+guntingChoice:
+    cmp     ebx, '3'
+    je      lose
+    cmp     ebx, '1'
+    je      win
+    jmp     draw
+
+batuChoice:
+    cmp     ebx, '1'
+    je      lose
+    cmp     ebx, '2'
+    je      win
+    jmp     draw
+
+lose:
+    inc     word [c_count]
+    mov     ecx, loseMsg
+    mov     edx, lenLose
+    jmp     returnChoice
+
+win:
+    inc     word [p_count]
+    mov     ecx, winMsg
+    mov     edx, lenWin
+    jmp     returnChoice
+
+draw:
+    mov     ecx, drawMsg
+    mov     edx, lenDraw
+
+returnChoice:
+    call    printMsg
+    call    newLine
     ret
