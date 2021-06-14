@@ -6,8 +6,14 @@ STDIN       equ 0
 STDOUT      equ 1
 
 section .data
+    greeting    db "Hello, let's play the game!", 0xa, 0xa
+    lengreet    equ $ - greeting
+
     inputMsg    db 'Masukkan nomor pilihan : '
     lenInputMsg equ $ - inputMsg
+
+    enterMsg    db '(Tekan "enter" untuk melanjutkan)', 0xa
+    lenEnter    equ $ - enterMsg
 
     kertas      db '1. kertas', 0xa
     lenKertas   equ $ - kertas
@@ -35,35 +41,51 @@ section .data
     loseMsg     db '%%%%%%%%%%%%%%', 0xa, '%  YOU LOSE  %', 0xa, '%%%%%%%%%%%%%%', 0xa
     lenLose     equ $ - loseMsg
 
-section .bss
-    p_choice    resb 1  ; player choice
-    c_choice    resb 1  ; computer choice
+    playerSts   db "Player wins : "
+    lenPStat    equ $ - playerSts
 
-    p_count     resw 1  ; player win counter
-    c_count     resw 1  ; computer win counter
+    compSts     db "Computer wins : "
+    lenCStat    equ $ - compSts
+
+    
+
+section .bss
+    p_choice    resd 1  ; player choice
+    c_choice    resd 1  ; computer choice
+
+    p_count     resd 1  ; player win counter
+    c_count     resd 1  ; computer win counter
+
+    somechar    resd 1
 
 section .text
     global _start
 
 _start:
-    mov     [p_count], 0
-    mov     [c_count], 0
-
-    mov     ecx, winMsg
-    mov     edx, lenWin
+    call    newLine
+    mov     ecx, greeting
+    mov     edx, lengreet
     call    printMsg
+    call    readEnter
+
+    mov     byte [p_count], '0'
+    mov     byte [c_count], '0'
+
+    mov     byte [c_choice], '2'
 
 lmain:
     call    printMenu
 
-    mov     ecx, p_choice
-    mov     edx, 1
-    call    printMsg
-    call    newLine
-
     mov     ecx, [p_choice]
     cmp     ecx, '9'
-    jne     lmain
+    je      exit
+
+    ; mov     ecx, p_choice
+    ; mov     edx, 1
+    ; call    printMsg
+
+    call    cmpChoice
+    jmp     lmain
 
 exit:
     mov     eax, SYS_EXIT
@@ -86,6 +108,17 @@ readInput:
     mov     eax, SYS_READ
     mov     ebx, STDIN
     int     0x80
+    ret
+
+readEnter:
+    mov     ecx, enterMsg
+    mov     edx, lenEnter
+    call    printMsg
+
+    mov     ecx, somechar
+    mov     edx, 1
+    call    readInput
+
     ret
 
 printMenu:
@@ -118,10 +151,37 @@ printMenu:
     mov     ecx, newline
     call    readInput
 
+    call    newLine
+
+    ret
+
+printStatus:
+    mov     ecx, playerSts
+    mov     edx, lenPStat
+    call    printMsg
+
+    mov     ecx, p_count
+    mov     edx, 2
+    call    printMsg
+    call    newLine
+
+    mov     ecx, compSts
+    mov     edx, lenCStat
+    call    printMsg
+
+    mov     ecx, c_count
+    mov     edx, 2
+    call    printMsg
+    call    newLine
     ret
 
 ; void cmpChoice()
 cmpChoice:
+    push    eax
+    push    ebx
+    mov     eax, dword [p_choice]
+    mov     ebx, dword [c_choice]
+
     cmp     eax, '1'
     je      kertasChoice
     cmp     eax, '2'
@@ -155,13 +215,13 @@ batuChoice:
     jmp     draw
 
 lose:
-    inc     word [c_count]
+    inc     dword [c_count]
     mov     ecx, loseMsg
     mov     edx, lenLose
     jmp     returnChoice
 
 win:
-    inc     word [p_count]
+    inc     dword [p_count]
     mov     ecx, winMsg
     mov     edx, lenWin
     jmp     returnChoice
@@ -173,4 +233,12 @@ draw:
 returnChoice:
     call    printMsg
     call    newLine
+    
+    call    printStatus
+    call    newLine
+
+    call    readEnter
+
+    pop     ebx
+    pop     eax
     ret
