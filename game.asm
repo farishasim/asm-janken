@@ -1,6 +1,13 @@
 SYS_EXIT    equ 1
 SYS_READ    equ 3
 SYS_WRITE   equ 4
+SYS_OPEN    equ 5
+SYS_CLOSE   equ 6
+SYS_TIME    equ 13
+
+READ_ONLY   equ 0
+WRITE_ONLY  equ 1
+READ_WRITE  equ 2
 
 STDIN       equ 0
 STDOUT      equ 1
@@ -8,6 +15,9 @@ STDOUT      equ 1
 section .data
     greeting    db "Hello, let's play the game!", 0xa, 0xa
     lengreet    equ $ - greeting
+
+    rules       db 'You need to reach 9 points to win the game.', 0xa, 0xa
+    lenRules    equ $ - rules
 
     inputMsg    db 'Masukkan nomor pilihan : '
     lenInputMsg equ $ - inputMsg
@@ -23,6 +33,12 @@ section .data
 
     batu        db '3. batu', 0xa
     lenBatu     equ $ - batu
+
+    loadMsg     db '7. load', 0xa
+    lenLoad     equ $ - loadMsg
+
+    saveMsg     db '8. save', 0xa
+    lenSave     equ $ - saveMsg
 
     exitMsg     db '9. exit', 0xa
     lenExitMsg  equ $ - exitMsg
@@ -59,6 +75,15 @@ section .data
     versus      db ' vs. '
     len_v       equ $ - versus
 
+    winner      db 'Congratulations, You win the game!', 0xa, 0xa
+    len_winner  equ $ - winner
+
+    loser       db 'You lose the game. Bye!', 0xa, 0xa
+    len_loser   equ $ - loser
+
+    filename    db 'temp.txt'
+    lenFile     equ $ - filename
+
 section .bss
     p_choice    resd 1  ; player choice
     c_choice    resd 1  ; computer choice
@@ -66,7 +91,11 @@ section .bss
     p_count     resd 1  ; player win counter
     c_count     resd 1  ; computer win counter
 
+    bufferIn    resb 2
+
     somechar    resd 1
+
+    fd          resb 1
 
 section .text
     global _start
@@ -78,29 +107,112 @@ _start:
     call    printMsg
     call    readEnter
 
-    mov     byte [p_count], '0'
-    mov     byte [c_count], '0'
+    mov     ecx, rules
+    mov     edx, lenRules
+    call    printMsg
+    call    readEnter
+
+    mov     dword [p_count], '0'
+    mov     dword [c_count], '0'
 
     mov     byte [c_choice], '2'
 
-lmain:
-    call    printMenu
+    lmain:
+        call    random
+        mov     [c_choice], eax
+        call    printMenu
 
-    mov     ecx, [p_choice]
-    cmp     ecx, '9'
-    je      exit
+        mov     ecx, [p_choice]
+        cmp     ecx, '9'
+        je      exit
 
-    ; mov     ecx, p_choice
-    ; mov     edx, 1
-    ; call    printMsg
+        cmp     ecx, '8'
+        je      saveGame
 
-    call    cmpChoice
-    jmp     lmain
+        cmp     ecx, '7'
+        je      loadGame
+
+        call    cmpChoice
+
+        cmp     dword [p_count], '9'
+        je      win_game
+
+        cmp     dword [c_count], '9'
+        je      lose_game
+
+        jmp     lmain
+
+win_game:
+    mov     ecx, winner
+    mov     edx, len_winner
+    call    printMsg
+    call    newLine
+    jmp     exit
+
+lose_game:
+    mov     ecx, loser
+    mov     edx, len_loser
+    call    printMsg
+    call    newLine
 
 exit:
     mov     eax, SYS_EXIT
     mov     ebx, 0
     int     0x80
+
+saveGame:
+    mov     eax, SYS_OPEN
+    mov     ebx, filename
+    mov     ecx, WRITE_ONLY
+    mov     edx, 0x777
+    int     0x80
+
+    mov     [fd], eax
+
+    mov     ebx, [fd]
+    mov     eax, SYS_WRITE
+    mov     ecx, p_count
+    mov     edx, 1
+    int     0x80
+
+    mov     ebx, [fd]
+    mov     eax, SYS_WRITE
+    mov     ecx, c_count
+    mov     edx, 1
+    int     0x80
+
+    mov     eax, SYS_CLOSE
+    mov     ebx, [fd]
+    int     0x80
+
+    jmp     lmain
+
+loadGame:
+    mov     eax, SYS_OPEN
+    mov     ebx, filename
+    mov     ecx, READ_ONLY
+    mov     edx, 0x777
+    int     0x80
+
+    mov     [fd], eax
+
+    mov     ebx, [fd]
+    mov     eax, SYS_READ
+    mov     ecx, bufferIn
+    mov     edx, 2
+    int     0x80
+
+    xor     eax, eax
+    mov     al, byte [bufferIn]
+    mov     dword [p_count], eax
+    mov     al, byte [bufferIn + 1]
+    mov     dword [c_count], eax
+
+    mov     eax, SYS_CLOSE
+    mov     ebx, [fd]
+    int     0x80
+
+    jmp     lmain
 
 printMsg:
     mov     eax, SYS_WRITE
@@ -142,6 +254,14 @@ printMenu:
 
     mov     ecx, batu
     mov     edx, lenBatu
+    call    printMsg
+
+    mov     ecx, loadMsg
+    mov     edx, lenLoad
+    call    printMsg
+
+    mov     ecx, saveMsg
+    mov     edx, lenSave
     call    printMsg
 
     mov     ecx, exitMsg
@@ -249,7 +369,6 @@ printVersus:
     pop     eax
     ret
 
-; void cmpChoice()
 cmpChoice:
     push    eax
     push    ebx
@@ -274,7 +393,7 @@ kertasChoice:
     je      l1
     cmp     ebx, '3'
     je      l2
-    jmp     draw    
+    jmp     l3    
 l1:
     call    printGunting
     jmp     lose
@@ -354,4 +473,17 @@ returnChoice:
 
     pop     ebx
     pop     eax
+    ret
+
+random:
+    mov     ebx, somechar
+    mov     eax, SYS_TIME
+    int     0x80
+
+    mov     eax, [ebx]
+    mov     ebx, 3
+    div     ebx
+    add     edx, '1'
+
+    mov     eax, edx
     ret
