@@ -47,7 +47,17 @@ section .data
     compSts     db "Computer wins : "
     lenCStat    equ $ - compSts
 
-    
+    word_1      db 'kertas'
+    len_1       equ $ - word_1
+
+    word_2      db 'gunting'
+    len_2       equ $ - word_2
+
+    word_3      db 'batu'
+    len_3       equ $ - word_3
+
+    versus      db ' vs. '
+    len_v       equ $ - versus
 
 section .bss
     p_choice    resd 1  ; player choice
@@ -175,6 +185,70 @@ printStatus:
     call    newLine
     ret
 
+printKertas:
+    push    eax
+    push    ebx
+    push    ecx
+    push    edx
+
+    mov     ecx, word_1
+    mov     edx, len_1
+    call    printMsg
+
+    pop     edx
+    pop     ecx
+    pop     ebx
+    pop     eax
+    ret
+
+printGunting:
+    push    eax
+    push    ebx
+    push    ecx
+    push    edx
+
+    mov     ecx, word_2
+    mov     edx, len_2
+    call    printMsg
+
+    pop     edx
+    pop     ecx
+    pop     ebx
+    pop     eax
+    ret
+
+printBatu:
+    push    eax
+    push    ebx
+    push    ecx
+    push    edx
+
+    mov     ecx, word_3
+    mov     edx, len_3
+    call    printMsg
+
+    pop     edx
+    pop     ecx
+    pop     ebx
+    pop     eax
+    ret
+
+printVersus:
+    push    eax
+    push    ebx
+    push    ecx
+    push    edx
+
+    mov     ecx, versus
+    mov     edx, len_v
+    call    printMsg
+
+    pop     edx
+    pop     ecx
+    pop     ebx
+    pop     eax
+    ret
+
 ; void cmpChoice()
 cmpChoice:
     push    eax
@@ -194,39 +268,78 @@ cmpChoice:
     jmp     returnChoice
 
 kertasChoice:
+    call    printKertas
+    call    printVersus
     cmp     ebx, '2'
-    je      lose
+    je      l1
     cmp     ebx, '3'
-    je      win
+    je      l2
     jmp     draw    
+l1:
+    call    printGunting
+    jmp     lose
+l2: 
+    call    printBatu
+    jmp     win
+l3:
+    call    printKertas
+    jmp     draw
 
 guntingChoice:
+    call    printGunting
+    call    printVersus
     cmp     ebx, '3'
-    je      lose
+    je      l4
     cmp     ebx, '1'
-    je      win
+    je      l5
+    jmp     l6
+l4:
+    call    printBatu
+    jmp     lose
+l5:
+    call    printKertas
+    jmp     win
+l6:
+    call    printGunting
     jmp     draw
 
 batuChoice:
+    call    printBatu
+    call    printVersus
     cmp     ebx, '1'
-    je      lose
+    je      l7
     cmp     ebx, '2'
-    je      win
+    je      l8
+    jmp     l9
+l7:
+    call    printKertas
+    jmp     lose
+l8:
+    call    printGunting
+    jmp     win
+l9:
+    call    printBatu
     jmp     draw
 
 lose:
+    call    newLine
+    call    newLine
     inc     dword [c_count]
     mov     ecx, loseMsg
     mov     edx, lenLose
     jmp     returnChoice
 
 win:
+    call    newLine
+    call    newLine
     inc     dword [p_count]
     mov     ecx, winMsg
     mov     edx, lenWin
     jmp     returnChoice
 
 draw:
+    call    newLine
+    call    newLine
     mov     ecx, drawMsg
     mov     edx, lenDraw
 
